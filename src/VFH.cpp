@@ -26,6 +26,19 @@ float MAX_REPULSIVE_FORCE = 10.0f; // 排斥力上限（VFF专用）
 float HISTOGRAM_THRESHOLD = 40.0f; // 直方图拥堵阈值（0~100）
 float SMOOTHING_RADIUS = 2.0f;     // 直方图平滑半径（扇区数）
 bool USE_VFH_PLUS = true;          // true=使用VFH+，false=使用VFF
+
+// ========== 新增：优化VFF专用参数 ==========
+float DYNAMIC_SAFE_MARGIN_BASE = 0.4f; // 基础安全裕度（米）
+float FORCE_BALANCE_THRESHOLD = 0.1f;  // 力场平衡阈值
+float RANDOM_PERTURBATION_DEG = 15.0f; // 随机扰动角度（度）
+
+// VFH+增强参数
+float HYSTERESIS_THRESHOLD = 0.15f;   // 滞后阈值
+int HISTORY_MEMORY_FRAMES = 3;        // 历史记忆帧数
+float OSCILLATION_TIME_WINDOW = 3.0f; // 振荡检测窗口
+float OSCILLATION_POS_STD_TH = 0.25f; // 位置标准差阈值
+float OSCILLATION_ANGLE_TH = 90.0f;   // 方向变化阈值
+
 void print_param()
 {
   std::cout << "=== 控制参数 ===" << std::endl;
@@ -101,10 +114,20 @@ int main(int argc, char **argv)
   // VFF专用参数（仅当USE_VFH_PLUS=false时使用）
   nh.param<float>("repulsive_gain", repulsive_gain, 2.0f);
   nh.param<float>("MAX_REPULSIVE_FORCE", MAX_REPULSIVE_FORCE, 10.0f);
+  nh.param<float>("DYNAMIC_SAFE_MARGIN_BASE", DYNAMIC_SAFE_MARGIN_BASE, 0.4f);
+  nh.param<float>("FORCE_BALANCE_THRESHOLD", FORCE_BALANCE_THRESHOLD, 0.1f);
+  nh.param<float>("RANDOM_PERTURBATION_DEG", RANDOM_PERTURBATION_DEG, 15.0f);
 
   // VFH+专用参数（仅当USE_VFH_PLUS=true时使用）
   nh.param<float>("HISTOGRAM_THRESHOLD", HISTOGRAM_THRESHOLD, 40.0f);
   nh.param<float>("SMOOTHING_RADIUS", SMOOTHING_RADIUS, 2.0f);
+
+  nh.param<float>("HYSTERESIS_THRESHOLD", HYSTERESIS_THRESHOLD, 0.15f);
+  nh.param<int>("HISTORY_MEMORY_FRAMES", HISTORY_MEMORY_FRAMES, 3);
+  nh.param<float>("OSCILLATION_TIME_WINDOW", OSCILLATION_TIME_WINDOW, 3.0f);
+  nh.param<float>("OSCILLATION_POS_STD_TH", OSCILLATION_POS_STD_TH, 0.25f);
+  nh.param<float>("OSCILLATION_ANGLE_TH", OSCILLATION_ANGLE_TH, 90.0f);
+
   print_param();
 
   int choice = 0;
@@ -225,7 +248,7 @@ int main(int argc, char **argv)
       if (USE_VFH_PLUS)
       {
         // ========== VFH+调用（推荐） ==========
-        reached = vfh_avoidance(
+        reached = vfh_plus_avoidance(
             target_x,            // 目标X（相对）
             target_y,            // 目标Y（相对）
             target_yaw,          // 目标航向
@@ -235,21 +258,29 @@ int main(int argc, char **argv)
             MIN_SAFE_DISTANCE,   // 最小安全距离
             HISTOGRAM_THRESHOLD, // 拥堵阈值
             SMOOTHING_RADIUS     // 平滑半径
+            ,
+            HYSTERESIS_THRESHOLD,    // 滞后阈值
+            HISTORY_MEMORY_FRAMES,   // 历史记忆
+            OSCILLATION_TIME_WINDOW, // 振荡检测
+            OSCILLATION_POS_STD_TH,  // 位置阈值
+            OSCILLATION_ANGLE_TH     // 角度阈值
         );
       }
       else
       {
-        // ========== VFF调用（兼容旧版） ==========
         reached = vff_avoidance(
             target_x,
             target_y,
             target_yaw,
             UAV_radius,
-            safe_margin,
+            DYNAMIC_SAFE_MARGIN_BASE, // 替代safe_margin
             repulsive_gain,
             MAX_SPEED,
             MIN_SAFE_DISTANCE,
-            MAX_REPULSIVE_FORCE);
+            MAX_REPULSIVE_FORCE,
+            FORCE_BALANCE_THRESHOLD, // 新增
+            RANDOM_PERTURBATION_DEG  // 新增
+        );
       }
 
       // 任务完成判断
