@@ -470,7 +470,7 @@ bool vff_avoidance(
     float forward_speed = max_speed * speed_factor;
 
     // ========== 7. 生成避障指令 ==========
-    float TIME_STEP = 0.1f;
+    float TIME_STEP = 0.2f;
     float safe_x = drone_x + total_force.x * forward_speed * TIME_STEP;
     float safe_y = drone_y + total_force.y * forward_speed * TIME_STEP;
 
@@ -1000,12 +1000,12 @@ bool vfh_plus_avoidance(
 
     // 自适应速度：拥堵越高，速度越低
     float speed_factor = 1.0f - (forward_congestion / histogram_threshold) * 0.6f;
-    if (speed_factor < 0.3f)
-        speed_factor = 0.3f;
+    if (speed_factor < 0.5f)
+        speed_factor = 0.5f;
     float forward_speed = max_speed * speed_factor;
 
     // 生成指令
-    float TIME_STEP = 0.1f;
+    float TIME_STEP = 0.2f;
     float safe_x = drone_x + std::cos(cmd_angle_world) * forward_speed * TIME_STEP;
     float safe_y = drone_y + std::sin(cmd_angle_world) * forward_speed * TIME_STEP;
 
